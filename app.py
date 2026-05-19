@@ -3,12 +3,13 @@ from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
-from openai import OpenAI
+
 from dotenv import load_dotenv
 import os
+import ollama
 
-load_dotenv()
-client= OpenAI(api_key= os.getenv("OPENAI_API_KEY"))
+
+
 
 def chunk_text(text, chunk_size=800, overlap=100):
     chunks= []
@@ -65,7 +66,7 @@ if uploaded_file:
             st.write(chunks[i])
             st.write("---")
         
-        relevant_chunks= chunks[indices[0]]
+        relevant_chunks= "\n\n".join(chunks[i] for i in indices[0])
 
         prompt= f"""
 Use the PDF content below to answer the question.PdfReader
@@ -77,13 +78,13 @@ Question: {question}
 
 Answer in simple student-friendly language.
 """
-        response= client.responses.create(
-            model= "gpt-5.2",
-            input= prompt
+        response= ollama.chat(
+            model= "llama3",
+            messages=[{'role': 'user', 'content': prompt}]
         )
 
         st.subheader("AI Answer")
-        st.write(response.output_text)
+        st.write(response['message']['content'])
       
 
 
