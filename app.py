@@ -34,24 +34,27 @@ if uploaded_file:
 
     chunks = chunk_text(text)
     
-    st.subheader("Chunks Created")
-    st.write(f"Total chunks: {len(chunks)}")
+    # st.subheader("Chunks Created")
+    # st.write(f"Total chunks: {len(chunks)}")
 
-    st.subheader("First Chunk Preview")
-    st.write(chunks[0])
+    # st.subheader("First Chunk Preview")
+    # st.write(chunks[0])
+    
+    with st.spinner("Creating embeddings..."):  
+      model= SentenceTransformer("all-MiniLM-L6-v2")
+      embeddings= model.encode(chunks)
 
-    model= SentenceTransformer("all-MiniLM-L6-v2")
-    embeddings= model.encode(chunks)
+      embeddings= np.array(embeddings).astype("float32")
 
-    embeddings= np.array(embeddings).astype("float32")
+      index= faiss.IndexFlatL2(embeddings.shape[1])
+      index.add(embeddings)
 
-    index= faiss.IndexFlatL2(embeddings.shape[1])
-    index.add(embeddings)
+    # st.subheader("Embeddings Created")
+    # st.write(f"Number of chunks: {len(chunks)}")
+    # st.write(f"Embedding shape: {embeddings.shape}")
+     
 
-    st.subheader("Embeddings Created")
-    st.write(f"Number of chunks: {len(chunks)}")
-    st.write(f"Embedding shape: {embeddings.shape}")
-
+    
     question= st.text_input("Ask a question about your PDF content")
     if question: 
         st.subheader("Your Question")
@@ -60,11 +63,11 @@ if uploaded_file:
         question_embedding= np.array(question_embedding).astype("float32")
 
         distances, indices= index.search(question_embedding, k=3)
-        st.subheader("Most Relevant Chunks")
+        # # st.subheader("Most Relevant Chunks")
 
-        for i in indices[0]:
-            st.write(chunks[i])
-            st.write("---")
+        # for i in indices[0]:
+        #     st.write(chunks[i])
+        #     st.write("---")
         
         relevant_chunks= "\n\n".join(chunks[i] for i in indices[0])
 
@@ -78,13 +81,20 @@ Question: {question}
 
 Answer in simple student-friendly language.
 """
-        response= ollama.chat(
+        with st.spinner("Generating answer..."):
+         response= ollama.chat(
             model= "llama3",
             messages=[{'role': 'user', 'content': prompt}]
         )
 
         st.subheader("AI Answer")
         st.write(response['message']['content'])
+        st.subheader("Sources Used")
+
+        for i in indices[0]:
+          st.write(chunks[i])
+          st.write("---")
+        
       
 
 
