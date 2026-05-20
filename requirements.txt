@@ -1,5 +1,7 @@
 streamlit
 pypdf
-openai
+sentence-transformers
 faiss-cpu
 python-dotenv
+groq
+numpy

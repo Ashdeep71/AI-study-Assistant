@@ -61,12 +61,11 @@ streamlit run app.py
 
 - `streamlit`
 - `pypdf`
-- `sentence_transformers`
+- `sentence-transformers`
 - `faiss-cpu`
 - `python-dotenv`
 - `groq`
-
-> Note: `requirements.txt` currently lists `openai`, but the app uses `groq` instead.
+- `numpy`
 
 ## Notes
 
