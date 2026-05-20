@@ -77,6 +77,21 @@ Answer in simple student-friendly language.
 st.title("AI Study Assistant")
 if "messages" not in st.session_state:
     st.session_state.messages = []
+# Sidebar: chat history, select, clear, and export
+with st.sidebar:
+    st.title("Chat History")
+
+    if st.session_state.messages:
+        for msg in st.session_state.messages:
+            st.write("**Question:**")
+            st.write(msg["question"])
+            st.write("**Answer:**")
+            short_answer = msg["answer"][:200]
+            st.write(short_answer + "...")
+
+            st.write("---")
+    else:
+        st.write("No chats yet.")
 
 uploaded_file = st.file_uploader("Upload your lecture PDF", type="pdf")
 
