@@ -11,8 +11,15 @@ import numpy as np
 
 from dotenv import load_dotenv
 import os
-import ollama
 
+
+
+from groq import Groq
+
+load_dotenv()
+client = Groq(
+    api_key=os.getenv("API_KEY")
+)
 
 def extract_text_from_pdf(uploaded_file):
     """Extracts and returns full text from a PDF file-like object.
@@ -114,14 +121,14 @@ if uploaded_file:
         prompt = build_prompt(relevant_chunks, question)
 
         with st.spinner("Generating answer..."):
-            response = ollama.chat(
-                model="llama3",
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": prompt}],
             )
 
         st.subheader("AI Answer")
-        st.write(response["message"]["content"])
-        answer = response["message"]["content"]
+        st.write(response.choices[0].message.content)
+        answer = response.choices[0].message.content
 
         st.session_state.messages.append({"question": question, "answer": answer})
 
