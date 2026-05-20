@@ -3,75 +3,66 @@ from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
+import streamlit as st
+from pypdf import PdfReader
+from sentence_transformers import SentenceTransformer
+import faiss
+import numpy as np
 
 from dotenv import load_dotenv
 import os
 import ollama
 
 
+def extract_text_from_pdf(uploaded_file):
+    """Extracts and returns full text from a PDF file-like object.
+
+    Returns a single string (joined pages)."""
+    reader = PdfReader(uploaded_file)
+    pages = []
+    for page in reader.pages:
+        pages.append(page.extract_text() or "")
+    return "\n".join(pages)
 
 
 def chunk_text(text, chunk_size=800, overlap=100):
-    chunks= []
-    start= 0
+    """Split `text` into fixed-size chunks with overlap.
+
+    Returns list of text chunks."""
+    chunks = []
+    start = 0
     while start < len(text):
-        end= start + chunk_size
+        end = start + chunk_size
         chunks.append(text[start:end])
         start += chunk_size - overlap
     return chunks
-    
 
-st.title("AI Study Assistant")
 
-uploaded_file= st.file_uploader("Upload your lecture PDF", type= "pdf")
+def create_embeddings_and_index(chunks, model_name="all-MiniLM-L6-v2"):
+    """Load embedding model, compute embeddings for `chunks`, and build a FAISS index.
 
-if uploaded_file:
-    reader = PdfReader(uploaded_file)
-    text= ""
+    Returns (model, embeddings_array, index).
+    """
+    model = SentenceTransformer(model_name)
+    embeddings = model.encode(chunks)
+    embeddings = np.array(embeddings).astype("float32")
+    index = faiss.IndexFlatL2(embeddings.shape[1])
+    index.add(embeddings)
+    return model, embeddings, index
 
-    for page in reader.pages:
-        text+= page.extract_text() or ""
 
-    chunks = chunk_text(text)
-    
-    # st.subheader("Chunks Created")
-    # st.write(f"Total chunks: {len(chunks)}")
+def retrieve_relevant_chunks(question, model, index, chunks, k=3):
+    """Return the concatenated relevant chunks and the indices for a `question`."""
+    q_emb = model.encode([question])
+    q_emb = np.array(q_emb).astype("float32")
+    distances, indices = index.search(q_emb, k=k)
+    relevant_chunks = "\n\n".join(chunks[i] for i in indices[0])
+    return relevant_chunks, indices
 
-    # st.subheader("First Chunk Preview")
-    # st.write(chunks[0])
-    
-    with st.spinner("Creating embeddings..."):  
-      model= SentenceTransformer("all-MiniLM-L6-v2")
-      embeddings= model.encode(chunks)
 
-      embeddings= np.array(embeddings).astype("float32")
-
-      index= faiss.IndexFlatL2(embeddings.shape[1])
-      index.add(embeddings)
-
-    # st.subheader("Embeddings Created")
-    # st.write(f"Number of chunks: {len(chunks)}")
-    # st.write(f"Embedding shape: {embeddings.shape}")
-     
-
-    
-    question= st.text_input("Ask a question about your PDF content")
-    if question: 
-        st.subheader("Your Question")
-        st.write(question)
-        question_embedding= model.encode([question])
-        question_embedding= np.array(question_embedding).astype("float32")
-
-        distances, indices= index.search(question_embedding, k=3)
-        # # st.subheader("Most Relevant Chunks")
-
-        # for i in indices[0]:
-        #     st.write(chunks[i])
-        #     st.write("---")
-        
-        relevant_chunks= "\n\n".join(chunks[i] for i in indices[0])
-
-        prompt= f"""
+def build_prompt(relevant_chunks, question):
+    """Create a user-facing prompt to send to the LLM."""
+    return f"""
 Use the PDF content below to answer the question.PdfReader
 
 PDF Content: 
@@ -81,21 +72,56 @@ Question: {question}
 
 Answer in simple student-friendly language.
 """
+
+
+st.title("AI Study Assistant")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+uploaded_file = st.file_uploader("Upload your lecture PDF", type="pdf")
+
+if uploaded_file:
+    # Extract and chunk
+    text = extract_text_from_pdf(uploaded_file)
+    chunks = chunk_text(text)
+
+    # Build embeddings and index (this can be cached later)
+    with st.spinner("Creating embeddings..."):
+        model, embeddings, index = create_embeddings_and_index(chunks)
+
+    question = st.text_input("Ask a question about your PDF content")
+    if question:
+        st.subheader("Your Question")
+        st.write(question)
+
+        relevant_chunks, indices = retrieve_relevant_chunks(question, model, index, chunks, k=3)
+
+        prompt = build_prompt(relevant_chunks, question)
+
         with st.spinner("Generating answer..."):
-         response= ollama.chat(
-            model= "llama3",
-            messages=[{'role': 'user', 'content': prompt}]
-        )
+            response = ollama.chat(
+                model="llama3",
+                messages=[{"role": "user", "content": prompt}],
+            )
 
         st.subheader("AI Answer")
-        st.write(response['message']['content'])
-        st.subheader("Sources Used")
+        st.write(response["message"]["content"])
+        answer = response["message"]["content"]
 
+        st.session_state.messages.append({"question": question, "answer": answer})
+
+        st.subheader("Sources Used")
         for i in indices[0]:
-          st.write(chunks[i])
-          st.write("---")
-        
-      
+            st.write(f"Source: chunks[{i}]")
+            st.write("---")
+
+        st.subheader("Chat History")
+        for msg in st.session_state.messages:
+            st.write(f"Q: {msg['question']}")
+            st.write(f"A: {msg['answer']}")
+            st.write("---")
+
+
 
 
 
