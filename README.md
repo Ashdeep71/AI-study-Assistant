@@ -2,6 +2,10 @@
 
 A Streamlit study assistant for PDF lecture notes. The app extracts text from a PDF, builds semantic embeddings with SentenceTransformers, retrieves relevant passages via FAISS, and generates answers using the Groq LLM client.
 
+## Try the Live Demo
+
+**[AI Study Assistant on Streamlit Cloud](https://ai-study-assistant-6lmbezgvuv3fqkfjs56muc.streamlit.app/)** — No installation required, just upload a PDF and start asking questions!
+
 ## Features
 
 - Upload a PDF and extract page text.
@@ -26,16 +30,10 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. Install `groq` if it is not already included in `requirements.txt`:
-
-```powershell
-pip install groq
-```
-
-4. Create a `.env` file with your Groq API key:
+3. Create a `.env` file with your Groq API key:
 
 ```text
-API_KEY=your_groq_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
 ## Usage
@@ -53,9 +51,9 @@ streamlit run app.py
 
 ## Environment
 
-- `app.py` loads `.env` using `python-dotenv` and expects `API_KEY` for the Groq client.
-- Current code uses the Groq LLM API, not Ollama.
-- If you change the backend, update the request logic in `app.py` accordingly.
+- `app.py` loads `.env` using `python-dotenv` and expects `GROQ_API_KEY` for the Groq client.
+- Current code uses the Groq LLM API with the `llama-3.1-8b-instant` model.
+- For the live deployment, the API key is stored securely in Streamlit Cloud secrets.
 
 ## Dependencies
 
@@ -73,6 +71,7 @@ streamlit run app.py
 - The current chunker uses fixed-size text slices with overlap, so sentences may be split.
 - Chat history is displayed in the sidebar and updates with each question.
 - The app shows the source chunk indices used for retrieval.
+- Each PDF upload starts a fresh session; previous PDFs are not retained.
 
 ## Demo screenshots
 
@@ -80,12 +79,18 @@ streamlit run app.py
 
 ![Chat sidebar screenshot](Images/image.png)
 
-## Suggested improvements
+## Known Limitations
 
-- Add caching for the SentenceTransformer model and FAISS index.
-- Add richer source attribution, including page numbers.
-- Persist chats between sessions using local storage or a database.
-- Add an example PDF to `sample_notes/` for quick demo use.
+- Chat history is cleared on session restart (no persistent storage yet).
+- One PDF per session; sourcing shows chunk indices, not page numbers.
+- Model embedding is reloaded on each PDF upload.
+
+## Future Improvements
+
+- Add `@st.cache_resource` for faster model loading.
+- Persist chat history to a database.
+- Extract and display page numbers and snippet previews for sources.
+- Support multiple PDFs in a single session.
 
 ## Project files
 
