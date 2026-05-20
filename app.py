@@ -18,7 +18,7 @@ from groq import Groq
 
 load_dotenv()
 client = Groq(
-    api_key=os.getenv("API_KEY")
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 def extract_text_from_pdf(uploaded_file):
